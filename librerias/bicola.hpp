@@ -1,106 +1,72 @@
 #include <iostream>
 using namespace std;
 
-const int MAX = 15;
-typedef struct tnodo *pnodo;
-typedef struct tnodo{
-    float dato;
-    pnodo siguiente;
-    pnodo anterior;
-};
+const int MAX_COLA = 20;
+typedef char tcontenedorChar[MAX_COLA];
 typedef struct tcola{
-    pnodo frente;
-    pnodo final;
-    int contador;
+    tcontenedorChar datos1;
+    tcontenedorChar datos2;
+    int frente;
+    int final;
 };
-
-void crearNodoBicola(pnodo &nuevo, int dato){
-    nuevo = new tnodo;
-    if (nuevo != NULL){
-        nuevo->dato = dato;
-        nuevo->siguiente = NULL;
-        nuevo->anterior = NULL;
-    }
-    else
-        cout << "ERROR" << endl;
-}
 void iniciarCola(tcola &cola){
-    cola.frente = NULL;
-    cola.final = NULL;
+    cola.frente = 0; // frente
+    cola.final = 0; // final
+}
+int siguiente(int indice){
+    if (indice == MAX_COLA*2-1)
+        indice = 0;
+    else
+        indice += 1;
+    return indice;
+}
+int anterior(int indice){
+    if (indice == 0)
+        indice = MAX_COLA*2-1;
+    else
+        indice -= 1;
+    return indice;
 }
 bool colaVacia(tcola cola){
-    return cola.contador == 0;
+    return cola.frente == cola.final;
 }
 bool colaLlena(tcola cola){
-    return cola.contador == MAX;
+    return siguiente(cola.final) == cola.frente;
 }
-void agregarCola(tcola &cola, int nuevoDato){
+void agregarCola(tcola &cola, int nuevo){
     if (colaLlena(cola) == true){
         cout << "COLA LLENA!" << endl;
     }
     else{
-        pnodo nuevo;
-        crearNodoBicola(nuevo, nuevoDato);
-        if (cola.frente == NULL){
-            cola.frente = nuevo;
-            cola.final = nuevo;
+        cola.final = siguiente(cola.final);
+        if (cola.final < MAX_COLA){
+            cola.datos1[cola.final] = nuevo;
         }
         else{
-            nuevo->anterior = cola.final;
-            cola.final->siguiente = nuevo;
-            cola.final = nuevo;
+            cola.datos2[cola.final%MAX_COLA] = nuevo;
         }
-        cola.contador += 1;
     }
 }
-pnodo quitarCola(tcola &cola, bool quitarFrente){
-    pnodo extraido, i;
-    if (colaVacia(cola) == true)
-        extraido = NULL;
+char quitarCola(tcola &cola, bool quitarFrente){
+    int extraido;
+    if (colaVacia(cola) == true){
+        extraido = -404;
+    }
     else{
         if (quitarFrente == true){
-            if (cola.frente == cola.final){
-                extraido = cola.frente;
-                cola.frente = NULL;
-                cola.final = NULL;
-            }
-            else{
-                extraido = cola.frente;
-                cola.frente = cola.frente->siguiente;
-                cola.frente->anterior = NULL;
-                extraido->siguiente = NULL;
-            }
+            cola.frente = siguiente(cola.frente);
+            if (cola.frente < MAX_COLA)
+                extraido = cola.datos1[cola.frente];
+            else
+                extraido = cola.datos2[cola.frente%MAX_COLA];
         }
         else{
-            if (cola.final == cola.frente){
-                extraido = cola.frente;
-                cola.frente = NULL;
-                cola.final = NULL;
-            }
-            else{
-                extraido = cola.final->anterior;
-                cola.final = cola.final->anterior;
-                cola.final->siguiente = NULL;
-                extraido->anterior = NULL;
-            }
+            if (cola.final < MAX_COLA)
+                extraido = cola.datos1[cola.final];
+            else
+                extraido = cola.datos2[cola.final%MAX_COLA];
+            cola.final = anterior(cola.final);
         }
-        cola.contador -= 1;
     }
     return extraido;
-}
-pnodo consultarFrente(tcola cola){
-    pnodo frente;
-    if (cola.frente != NULL)
-        frente = cola.frente;
-    else
-        frente = NULL;
-    return frente;
-}
-pnodo consultarFinal(tcola cola){
-    pnodo final;
-    if (cola.final != NULL)
-        final = cola.final;
-    else
-        final = NULL;
-    return final;
 }
