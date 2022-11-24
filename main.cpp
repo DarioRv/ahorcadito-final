@@ -29,17 +29,18 @@ typedef struct detallesJugador{
     tcadena nickname;
     int puntaje;
     int palabrasAdivinadas;
-    int intentosRestantes;
 };
 typedef struct detallesPartida{
     detallesJugador jugador1;
     detallesJugador jugador2;
     int dificultad;
     pnodo listaPalabras;
+    int jugadorActivo;
+    bool estaAdivinada;
+    int intentosRestantes;
 };
 const int CANT_PALABRAS = 6;
 const int MAX = 30;
-#include "librerias/listasSimples.hpp"
 typedef tpalabra tcontenedor[MAX];
 typedef struct tarreglo{
     tcontenedor datos;
@@ -50,12 +51,14 @@ typedef struct tarregloBool{
     tcontenedor2 datos;
     int ocupado;
 };
+#include "librerias/listasSimples.hpp"
+//#include "librerias/arbol.hpp"
 void cargarDatosJugador(tjugador &j);
 void cargarDatosPalabra(tpalabra &p);
 
 void gestionJugadores(parchivo jugadores);
 void gestionPalabras(parchivo palabras);
-void jugar();
+void jugar(parchivo jugadores);
 void rankingJugadores();
 
 void registrarJugador(parchivo jugadores);
@@ -72,10 +75,10 @@ bool verificarPalabra(parchivo palabras, tcadena palabra);
 
 void elegirJugadores(detallesPartida &config, bool &jugadoresSeleccionados);
 void seleccionarNivel(detallesPartida &config, bool &palabrasSeleccionadas);
-void iniciarPartida(detallesPartida config);
+void iniciarPartida(detallesPartida config, parchivo jugadores);
 void preSeleccionarPalabras(tarreglo &preListaPalabras, int criterio);
 void seleccionarPalabras(pnodo &listaPalabras, tarreglo preListaPalabras);
-void probarLetra(detallesPartida config, pnodo &palabraActual, tarregloBool &palabraOcultada);
+void probarLetra(detallesPartida &config, pnodo &palabraActual, tarregloBool &palabraOcultada);
 void ocultarPalabra(pnodo palabraActual, tarregloBool &palabraOcultada);
 bool verificarLetra(pnodo palabraActual, tarregloBool &palabraOcultada, char letra);
 bool verificarPalabraAcertada(pnodo palabraActual, tarregloBool palabraOcultada);
@@ -84,6 +87,7 @@ void controlPistas(detallesPartida &config, int jugadorActivo, pnodo palabraActu
 void controlPuntaje(detallesPartida &config, int jugadorActivo, pnodo palabraActual);
 bool verificarPalindroma(pnodo palabraActual);
 bool verificarCaracteresDistintos(pnodo palabraActual);
+void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador);
 
 main(){
     int opcion;
@@ -106,7 +110,7 @@ main(){
                 gestionPalabras(palabras);
                 break;
             case 3:
-                jugar();
+                jugar(jugadores);
                 break;
             case 5:
                 cout << "FIN DEL JUEGO" << endl;
@@ -203,7 +207,7 @@ void gestionPalabras(parchivo palabras){
         system("cls");
     }while (opcion != 4);
 }
-void jugar(){
+void jugar(parchivo jugadores){
     system("cls");
     int opcion;
     detallesPartida config;
@@ -228,10 +232,12 @@ void jugar(){
                 seleccionarNivel(config, palabrasCargadas);
                 break;
             case 3:
-                //if (jugadoresSeleccionados == true && palabrasCargadas == true)
-                    iniciarPartida(config);
-                //else
-                    //cout << "Debe seleccionar jugadores y el nivel" << endl;
+                if (jugadoresSeleccionados == true && palabrasCargadas == true){
+                    iniciarPartida(config, jugadores);
+                    palabrasCargadas = false;
+                }
+                else
+                    cout << "Debe seleccionar jugadores y el nivel" << endl;
                 break;
             case 4:
                 cout << "Volviendo al menu anterior" << endl;
@@ -244,7 +250,16 @@ void jugar(){
         system("cls");
     }while (opcion != 4);
 }
-void rankingJugadores();
+void rankingJugadores(parchivo jugadores){
+    tjugador j;
+    jugadores = fopen("datos/jugadores.bat", "rb");
+    while (!feof(jugadores)){
+        fread(&j, sizeof(j), 1, jugadores);
+        if (!feof(jugadores)){
+
+        }
+    }
+}
 
 /* - - Gestion de Jugadores - - */
 void cargarDatosJugador(tjugador &j){
@@ -455,10 +470,8 @@ void elegirJugadores(detallesPartida &config, bool &jugadoresSeleccionados){
         jugadoresSeleccionados = true;
         config.jugador1.puntaje = 0;
         config.jugador1.palabrasAdivinadas = 0;
-        config.jugador1.intentosRestantes = 6;
         config.jugador2.puntaje = 0;
         config.jugador2.palabrasAdivinadas = 0;
-        config.jugador2.intentosRestantes = 6;
     }
     else{
         cout << "ALGUNO DE LOS JUGADORES NO ESTA REGISTRADO, VUELVA A INTENTAR" << endl;
@@ -499,24 +512,28 @@ void seleccionarNivel(detallesPartida &config, bool &palabrasSeleccionadas){
     config.listaPalabras = listaPalabras;
     palabrasSeleccionadas = true;
 }
-void iniciarPartida(detallesPartida config){
+void iniciarPartida(detallesPartida config, parchivo jugadores){
     system("cls");
-    int opcion=0, jugadorActivo = 1;
+    int opcion=0;
+    config.jugadorActivo = 1;
     pnodo palabraActual;
     tarregloBool palabraOcultada;
     tcadena palabraArriesgada;
     bool tieneIntentos = true;
     for (palabraActual=config.listaPalabras; palabraActual!=NULL && opcion!=4; palabraActual = palabraActual->siguiente){
-        bool estaAdivinada = false;
+        config.estaAdivinada = false;
         ocultarPalabra(palabraActual, palabraOcultada);
+        config.intentosRestantes = palabraActual->dato.longitud/2;
         do{
-            if (jugadorActivo == 1){
+            if (config.jugadorActivo == 1){
                 cout << "JUGANDO: " << config.jugador1.nickname << endl;
-                cout << "PUNTAJE: " << config.jugador2.puntaje << endl;
+                cout << "PUNTAJE: " << config.jugador1.puntaje << endl;
+                cout << "INTENTOS DISPONIBLES: " << config.intentosRestantes << endl;
             }
             else{
                 cout << "JUGANDO: " << config.jugador2.nickname << endl;
                 cout << "PUNTAJE: " << config.jugador2.puntaje << endl;
+                cout << "INTENTOS DISPONIBLES: " << config.intentosRestantes << endl;
             }
             cout << "PROGRESO: ";
             mostrarPalabra(palabraActual, palabraOcultada);
@@ -531,7 +548,7 @@ void iniciarPartida(detallesPartida config){
                     probarLetra(config, palabraActual, palabraOcultada);
                     break;
                 case 2:
-                    controlPistas(config, jugadorActivo, palabraActual);
+                    controlPistas(config, config.jugadorActivo, palabraActual);
                     break;
                 case 3:
                     cout << "Ya la tienes? Dime la palabra: ";
@@ -539,9 +556,10 @@ void iniciarPartida(detallesPartida config){
                     gets(palabraArriesgada);
                     if (strcmp(palabraArriesgada, palabraActual->dato.palabra) == 0){
                         cout << "Adivinaste la palabra!" << endl;
-                        estaAdivinada = true;
+                        config.estaAdivinada = true;
                     }
                     else{
+                        config.intentosRestantes = 0;
                         cout << "Esa no era la palabra, perdiste :(" << endl;
                     }
                     break;
@@ -552,25 +570,48 @@ void iniciarPartida(detallesPartida config){
                     cout << "OPCION NO VALIDA" << endl;
                     break;
             }
-            if (estaAdivinada == true){
-                controlPuntaje(config, jugadorActivo, palabraActual);
+            tieneIntentos = config.intentosRestantes > 0;
+            if (tieneIntentos == false)
+               cout << "Se te acabaron los intentos :(" << endl;
+            if (config.estaAdivinada == true){
+                controlPuntaje(config, config.jugadorActivo, palabraActual);
             }
-            if (estaAdivinada == false)
-                estaAdivinada = verificarPalabraAcertada(palabraActual, palabraOcultada);
-            else{
-                if (jugadorActivo == 1)
-                    jugadorActivo = 2;
-                else
-                    jugadorActivo = 1;
+            if (config.estaAdivinada == true || config.intentosRestantes == false){
+                if (config.jugadorActivo == 1){
+                    config.jugadorActivo = 2;
+                }
+                else{
+                    config.jugadorActivo = 1;
+                }
             }
+            
             system("pause");
             system("cls");
-        }while (opcion != 4 && estaAdivinada != true);
+        }while (opcion != 4 && config.estaAdivinada != true && tieneIntentos != false);
     }
     cout << " - - - PARTIDA FINALIZADA - - - " << endl;
-    cout << "GANADOR: " << endl;
-    cout << "Puntaje jugador 1: " << endl;
-    cout << "Puntaje jugador 2:" << endl;
+    if (config.jugador1.palabrasAdivinadas == 0 && config.jugador2.palabrasAdivinadas == 0){
+        cout << "No se adivino ninguna palabra, no hay un ganador" << endl;
+    }
+    else{
+        if (config.jugador1.puntaje == config.jugador2.puntaje){
+            cout << "El resultado de la partida es un empate" << endl;
+            guardarRegistro(jugadores, config.jugador1);
+            guardarRegistro(jugadores, config.jugador2);
+        }
+        else{
+            if (config.jugador1.puntaje > config.jugador2.puntaje){
+                cout << "GANADOR: " << config.jugador1.nickname << endl;
+                guardarRegistro(jugadores, config.jugador1);
+            }
+            else{
+                cout << "GANADOR: " << config.jugador2.nickname << endl;
+                guardarRegistro(jugadores, config.jugador2);
+            }
+            cout << "Puntaje jugador 1: " << config.jugador1.puntaje << endl;
+            cout << "Puntaje jugador 2:" << config.jugador2.puntaje << endl;
+        }
+    }
 }
 
 void preSeleccionarPalabras(tarreglo &preListaPalabras, int criterio){
@@ -589,17 +630,28 @@ void preSeleccionarPalabras(tarreglo &preListaPalabras, int criterio){
     fclose(palabras);
 }
 void seleccionarPalabras(pnodo &listaPalabras, tarreglo preListaPalabras){
-    pnodo nuevo;
+    pnodo i, nuevo;
     int indice, cantidad = CANT_PALABRAS;
+    bool existe;
     while (cantidad > 0){
+        existe = false;
         indice =  1 + rand() % (preListaPalabras.ocupado - 0);
+        // Comprobar que no se repitan palabras
+        if (listaPalabras != NULL)
+            for (i=listaPalabras; i != NULL; i=i->siguiente){
+                if (strcmp(i->dato.palabra, preListaPalabras.datos[indice].palabra) == 0)
+                    existe = true;
+            }
+        // Agregarla
+        if (existe == false){
         crearNodo(nuevo, preListaPalabras.datos[indice]);
         agregarInicio(listaPalabras, nuevo);
         cantidad -= 1;
+        }
     }
     mostrarLista(listaPalabras);
 }
-void probarLetra(detallesPartida config, pnodo &palabraActual, tarregloBool &palabraOcultada){
+void probarLetra(detallesPartida &config, pnodo &palabraActual, tarregloBool &palabraOcultada){
     char letraJugada;
     cout << "La palabra es: " << palabraActual->dato.palabra << endl;
     //mostrarPalabra(palabraActual, palabraOcultada);
@@ -610,9 +662,11 @@ void probarLetra(detallesPartida config, pnodo &palabraActual, tarregloBool &pal
     }
     else{
         cout << "No acertaste una letra :(" << endl;
+            config.intentosRestantes -= 1;
     }
     if (verificarPalabraAcertada(palabraActual, palabraOcultada) == true){
         cout << "Acertaste la palabra" << endl;
+        config.estaAdivinada = true;
     }
 }
 void ocultarPalabra(pnodo palabraActual, tarregloBool &palabraOcultada){
@@ -756,3 +810,22 @@ bool verificarCaracteresDistintos(pnodo palabraActual){
         tieneDistintosCaracteres = false;
     return tieneDistintosCaracteres;
 }
+void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador){
+    tjugador j;
+    jugadores = fopen("datos/jugadores.bat", "rb+");
+    bool registrado = false;
+    while (!feof(jugadores) && registrado == false){
+        fread(&j, sizeof(j), 1, jugadores);
+        if (strcmp(j.nickname, jugadorGanador.nickname) == 0){
+            j.partidasGanadas += 1;
+            j.puntaje = jugadorGanador.puntaje;
+            fseek(jugadores, -sizeof(j), 1);
+            fwrite(&j, sizeof(j),1, jugadores);
+            registrado = true;
+        }
+    }
+    cout << "Se ha registrado tu partida " << jugadorGanador.nickname << endl;
+    fclose(jugadores);
+}
+
+/* - - Ranking Jugadores - - */
