@@ -92,10 +92,8 @@ void controlPistas(detallesPartida &config, int jugadorActivo, pnodo palabraActu
 void controlPuntaje(detallesPartida &config, int jugadorActivo, pnodo palabraActual);
 bool verificarPalindroma(pnodo palabraActual);
 bool verificarCaracteresDistintos(pnodo palabraActual);
-void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador);
+void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador, bool gano);
 
-void obtenerDatosJugadores(parchivo jugadores, tarregloJugadores &listaJugadores);
-void ordernarJugadores(tarregloJugadores &listaJugadores);
 void mostrarArbol(pnodoArbol arbol);
 
 main(){
@@ -279,10 +277,14 @@ void rankingJugadores(parchivo jugadores){
     iniciarArbol(arbol);
     tarregloJugadores listaJugadores;
     listaJugadores.ocupado = -1;
-    obtenerDatosJugadores(jugadores, listaJugadores);
-    for (int i=0; i<=listaJugadores.ocupado; i+=1){
-        crearNodoArbol(nuevo, listaJugadores.datos[i]);
-        insertarNodo(arbol, nuevo);
+    tjugador j;
+    jugadores = fopen("datos/jugadores.bat", "rb");
+    while (!feof(jugadores)){
+        fread(&j, sizeof(j), 1, jugadores);
+        if (!feof(jugadores)){
+            crearNodoArbol(nuevo, j);
+            insertarNodo(arbol, nuevo);
+        }
     }
     cout << "ID     NICKNAME        PG      PUNTAJE" << endl;
     mostrarArbol(arbol);
@@ -294,8 +296,6 @@ void cargarDatosJugador(tjugador &j){
     Procedimiento encargado de pedir los datos
     necesarios para el registro del jugador
     */
-    cout << "ID: ";
-    cin >> j.id;
     cout << "APELLIDO: ";
     fflush(stdin);
     gets(j.apellido);
@@ -314,12 +314,22 @@ void registrarJugador(parchivo jugadores){
     de datos de un jugador en el archivo binario de jugadores.
     */
     tjugador j;
+    /*Devolver el id*/
+    int ultimoId;
+    jugadores = fopen("datos/palabras.bat", "rb");
+    while(!feof(jugadores)){
+        fread(&j, sizeof(j), 1, jugadores);
+        ultimoId = j.id;
+    }
+    fclose(jugadores);
+    /*Carga de datos*/
     int cantidad;
     jugadores = fopen("datos/jugadores.bat", "ab+");
     cout << "Cuantos jugadores registrara? ";
     cin >> cantidad;
     while (cantidad > 0){
         cargarDatosJugador(j);
+        j.id = ultimoId + 1;
         if (verificarJugador(jugadores, j.nickname) == false)
             fwrite(&j, sizeof(j), 1, jugadores);
         else
@@ -455,8 +465,6 @@ void cargarDatosPalabra(tpalabra &p){
     Procedimiento que permite la carga de datos
     de una palabra que se quiera registrar.
     */
-    cout << "ID: ";
-    cin >> p.id;
     cout << "PALABRA: ";
     fflush(stdin);
     gets(p.palabra);
@@ -472,8 +480,18 @@ void registrarPalabra(parchivo palabras){
     datos de palabras.
     */
     tpalabra p;
+    /*Devolver el id*/
+    int ultimoId;
+    palabras = fopen("datos/palabras.bat", "rb");
+    while(!feof(palabras)){
+        fread(&p, sizeof(p), 1, palabras);
+        ultimoId = p.id;
+    }
+    fclose(palabras);
+    /*Carga de datos*/
     palabras = fopen("datos/palabras.bat", "ab+");
     cargarDatosPalabra(p);
+    p.id = ultimoId + 1;
     if (verificarPalabra(palabras, p.palabra) == false)
         fwrite(&p, sizeof(p), 1, palabras);
     else
@@ -743,17 +761,17 @@ void iniciarPartida(detallesPartida config, parchivo jugadores){
     else{
         if (config.jugador1.puntaje == config.jugador2.puntaje){
             cout << "El resultado de la partida es un empate" << endl;
-            guardarRegistro(jugadores, config.jugador1);
-            guardarRegistro(jugadores, config.jugador2);
+            guardarRegistro(jugadores, config.jugador1, false);
+            guardarRegistro(jugadores, config.jugador2, false);
         }
         else{
             if (config.jugador1.puntaje > config.jugador2.puntaje){
                 cout << "GANADOR: " << config.jugador1.nickname << endl;
-                guardarRegistro(jugadores, config.jugador1);
+                guardarRegistro(jugadores, config.jugador1, true);
             }
             else{
                 cout << "GANADOR: " << config.jugador2.nickname << endl;
-                guardarRegistro(jugadores, config.jugador2);
+                guardarRegistro(jugadores, config.jugador2, true);
             }
             cout << "Puntaje jugador 1: " << config.jugador1.puntaje << endl;
             cout << "Puntaje jugador 2:" << config.jugador2.puntaje << endl;
@@ -1035,7 +1053,7 @@ bool verificarCaracteresDistintos(pnodo palabraActual){
         tieneDistintosCaracteres = false;
     return tieneDistintosCaracteres;
 }
-void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador){
+void guardarRegistro(parchivo jugadores, detallesJugador jugador, bool gano){
     /*
     Procedimiento que recibe el registro del jugador ganador de la partida
     y suma su puntaje obtenido y suma una partida ganada en el archivo de datos
@@ -1046,34 +1064,20 @@ void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador){
     bool registrado = false;
     while (!feof(jugadores) && registrado == false){
         fread(&j, sizeof(j), 1, jugadores);
-        if (strcmp(j.nickname, jugadorGanador.nickname) == 0){
-            j.partidasGanadas += 1;
-            j.puntaje = jugadorGanador.puntaje;
+        if (strcmp(j.nickname, jugador.nickname) == 0){
+            if (gano == true)
+                j.partidasGanadas += 1;
+            j.puntaje += jugador.puntaje;
             fseek(jugadores, -sizeof(j), 1);
             fwrite(&j, sizeof(j),1, jugadores);
             registrado = true;
         }
     }
-    cout << "Se ha registrado tu partida " << jugadorGanador.nickname << endl;
+    cout << "Se ha registrado tu partida " << jugador.nickname << endl;
     fclose(jugadores);
 }
 
 /* - - Ranking Jugadores - - */
-void obtenerDatosJugadores(parchivo jugadores, tarregloJugadores &listaJugadores){
-    /*
-    Lee el archivo de datos de los jugadores y los guarda en un arreglo para simplificar
-    el manejo de los mismos.
-    */
-    tjugador j;
-    jugadores = fopen("datos/jugadores.bat", "rb");
-    while (!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            listaJugadores.ocupado += 1;
-            listaJugadores.datos[listaJugadores.ocupado] = j;
-        }
-    }
-}
 void mostrarArbol(pnodoArbol arbol){
     /*
     Muestra el ranking de jugadores utilizando la
