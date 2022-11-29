@@ -89,6 +89,7 @@ bool verificarLetra(pnodo palabraActual, tarregloBool &palabraOcultada, char let
 bool verificarPalabraAcertada(pnodo palabraActual, tarregloBool palabraOcultada);
 void mostrarPalabra(pnodo palabraActual, tarregloBool palabraOcultada);
 void controlPistas(detallesPartida &config, int jugadorActivo, pnodo palabraActual);
+void arriesgarSolucion(detallesPartida &config, pnodo palabraActual);
 void controlPuntaje(detallesPartida &config, int jugadorActivo, pnodo palabraActual);
 bool verificarPalindroma(pnodo palabraActual);
 bool verificarCaracteresDistintos(pnodo palabraActual);
@@ -316,10 +317,16 @@ void registrarJugador(parchivo jugadores){
     tjugador j;
     /*Devolver el id*/
     int ultimoId;
-    jugadores = fopen("datos/palabras.bat", "rb");
-    while(!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        ultimoId = j.id;
+    jugadores = fopen("datos/jugadores.bat", "rb");
+    if (jugadores != NULL){
+        while(!feof(jugadores)){
+            fread(&j, sizeof(j), 1, jugadores);
+            ultimoId = j.id;
+        }
+    }
+    else{
+        jugadores = fopen("datos/jugadores.bat", "wb");
+        ultimoId = 0;
     }
     fclose(jugadores);
     /*Carga de datos*/
@@ -483,9 +490,15 @@ void registrarPalabra(parchivo palabras){
     /*Devolver el id*/
     int ultimoId;
     palabras = fopen("datos/palabras.bat", "rb");
-    while(!feof(palabras)){
-        fread(&p, sizeof(p), 1, palabras);
-        ultimoId = p.id;
+    if (palabras != NULL){
+        while(!feof(palabras)){
+            fread(&p, sizeof(p), 1, palabras);
+            ultimoId = p.id;
+        }
+    }
+    else{
+        palabras = fopen("datos/palabras.bat", "wb");
+        ultimoId = 0;
     }
     fclose(palabras);
     /*Carga de datos*/
@@ -582,7 +595,7 @@ void elegirJugadores(detallesPartida &config, bool &jugadoresSeleccionados){
     cout << "Indique el nickname del segundo jugador" << endl;
     fflush(stdin);
     gets(config.jugador2.nickname);
-    if (verificarJugador(jugadores, config.jugador1.nickname) == true && verificarJugador(jugadores, config.jugador2.nickname)){
+    if (verificarJugador(jugadores, config.jugador1.nickname) == true && verificarJugador(jugadores, config.jugador2.nickname) && strcmp(config.jugador1.nickname, config.jugador2.nickname) != 0){
         cout << "JUGADORES SELECCIONADOS" << endl;
         jugadoresSeleccionados = true;
         config.jugador1.puntaje = 0;
@@ -592,6 +605,7 @@ void elegirJugadores(detallesPartida &config, bool &jugadoresSeleccionados){
     }
     else{
         cout << "ALGUNO DE LOS JUGADORES NO ESTA REGISTRADO, VUELVA A INTENTAR" << endl;
+        cout << "TENGA EN CUENTA QUE NO PUEDE ENFRENTAR A SI MISMO" << endl;
         jugadoresSeleccionados = false;
     }
 }
@@ -633,9 +647,14 @@ void seleccionarNivel(detallesPartida &config, bool &palabrasSeleccionadas){
             break;
     }
     preSeleccionarPalabras(preListaPalabras, criterio);
-    seleccionarPalabras(listaPalabras, preListaPalabras);
-    config.listaPalabras = listaPalabras;
-    palabrasSeleccionadas = true;
+    if (preListaPalabras.ocupado >= 5){
+        seleccionarPalabras(listaPalabras, preListaPalabras);
+        config.listaPalabras = listaPalabras;
+        palabrasSeleccionadas = true;
+    }
+    else{
+        cout << "No existen palabras suficientes para generar la lista, por favor seleccione otra dificultad o agregue mas palabras" << endl;
+    }
 }
 void iniciarPartida(detallesPartida config, parchivo jugadores){
     /*
@@ -668,7 +687,6 @@ void iniciarPartida(detallesPartida config, parchivo jugadores){
     config.jugadorActivo = 1;
     pnodo palabraActual;
     tarregloBool palabraOcultada;
-    tcadena palabraArriesgada;
     bool tieneIntentos = true;
     // El for recorre todo la lista de palabras y se detiene cuando llega al final o la opcion es 4 (abandonar la partida)
     for (palabraActual=config.listaPalabras; palabraActual!=NULL && opcion!=4; palabraActual = palabraActual->siguiente){
@@ -704,17 +722,7 @@ void iniciarPartida(detallesPartida config, parchivo jugadores){
                     controlPistas(config, config.jugadorActivo, palabraActual);
                     break;
                 case 3:
-                    cout << "Ya la tienes? Dime la palabra: ";
-                    fflush(stdin);
-                    gets(palabraArriesgada);
-                    if (strcmp(palabraArriesgada, palabraActual->dato.palabra) == 0){
-                        cout << "Adivinaste la palabra!" << endl;
-                        config.estaAdivinada = true;
-                    }
-                    else{
-                        config.intentosRestantes = 0;
-                        cout << "Esa no era la palabra, perdiste :(" << endl;
-                    }
+                    arriesgarSolucion(config, palabraActual);
                     break;
                 case 4:
                     cout << "Volviendo al menu anterior" << endl;
@@ -956,6 +964,20 @@ void controlPistas(detallesPartida &config, int jugadorActivo, pnodo palabraActu
         default:
             cout << "OPCION NO VALIDA, VOLVIENDO" << endl;
             break;
+    }
+}
+void arriesgarSolucion(detallesPartida &config, pnodo palabraActual){
+    tcadena palabraArriesgada;
+    cout << "Ya la tienes? Dime la palabra: ";
+    fflush(stdin);
+    gets(palabraArriesgada);
+    if (strcmp(palabraArriesgada, palabraActual->dato.palabra) == 0){
+        cout << "Adivinaste la palabra!" << endl;
+        config.estaAdivinada = true;
+    }
+    else{
+        config.intentosRestantes = 0;
+        cout << "Esa no era la palabra, perdiste :(" << endl;
     }
 }
 void controlPuntaje(detallesPartida &config, int jugadorActivo, pnodo palabraActual){
