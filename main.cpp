@@ -95,7 +95,7 @@ bool verificarPalindroma(pnodo palabraActual);
 bool verificarCaracteresDistintos(pnodo palabraActual);
 void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador, bool gano);
 
-void mostrarArbol(pnodoArbol arbol);
+void mostrarArbol(pnodoArbol arbol, int orden);
 
 main(){
     int opcion;
@@ -162,7 +162,10 @@ void gestionJugadores(parchivo jugadores){
                 cout << "Indique nickname: ";
                 fflush(stdin);
                 gets(nickname);
-                modificarJugador(jugadores, nickname);
+                if (verificarJugador(jugadores, nickname))
+                    modificarJugador(jugadores, nickname);
+                else
+                    cout << "EL NICK PROPORCIONADO NO ESTA REGISTRADO" << endl;
                 break;
             case 4:
                 listarJugadores(jugadores);
@@ -171,7 +174,10 @@ void gestionJugadores(parchivo jugadores){
                 cout << "Indique nickname: ";
                 fflush(stdin);
                 gets(nickname);
-                eliminarJugador(jugadores,nickname);
+                if (verificarJugador(jugadores, nickname))
+                    eliminarJugador(jugadores,nickname);
+                else
+                    cout << "EL NICK PROPORCIONADO NO ESTA REGISTRADO" << endl;
                 break;
             case 6:
                 cout << "VOLVIENDO AL MENU ANTERIOR" << endl;
@@ -274,21 +280,33 @@ void rankingJugadores(parchivo jugadores){
     los jugadores y creo la estructura del arbol para
     poder representarla
     */
+    int orden;
     pnodoArbol nuevo, arbol;
     iniciarArbol(arbol);
     tarregloJugadores listaJugadores;
     listaJugadores.ocupado = -1;
     tjugador j;
     jugadores = fopen("datos/jugadores.bat", "rb");
-    while (!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            crearNodoArbol(nuevo, j);
-            insertarNodo(arbol, nuevo);
+    if (jugadores != NULL){
+        while (!feof(jugadores)){
+            fread(&j, sizeof(j), 1, jugadores);
+            if (!feof(jugadores)){
+                crearNodoArbol(nuevo, j);
+                insertarNodo(arbol, nuevo);
+            }
         }
     }
-    cout << "ID     NICKNAME        PG      PUNTAJE" << endl;
-    mostrarArbol(arbol);
+    fclose(jugadores);
+    cout << "Como desea mostrar el orden?" << endl;
+    cout << "1. Descendente" << endl;
+    cout << "2. Ascendente" << endl;
+    cin >> orden;
+    if (orden == 1 || orden == 2){
+        cout << "ID     NICKNAME        PG      PUNTAJE" << endl;
+        mostrarArbol(arbol, orden);
+    }
+    else
+        cout << "Ingrese un valor valido" << endl;
 }
 
 /* - - Gestion de Jugadores - - */
@@ -353,22 +371,24 @@ void consultarJugador(parchivo jugadores, tcadena nickname){
     tjugador j;
     bool existe = false;
     jugadores = fopen("datos/jugadores.bat", "rb");
-    while (!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            if (strcmp(j.nickname, nickname) == 0){
-                existe = true;
-                cout << "ID: " << j.id << endl;
-                cout << "APELLIDO: " << j.apellido << endl;
-                cout << "NOMBRE: " << j.nombre << endl;
-                cout << "NICKNAME: " << j.nickname << endl;
-                cout << "PUNTAJE: " << j.puntaje << endl;
-                cout << "PARTIDAS GANADAS: " << j.partidasGanadas << endl;
+    if (jugadores != NULL){
+        while (!feof(jugadores)){
+            fread(&j, sizeof(j), 1, jugadores);
+            if (!feof(jugadores)){
+                if (strcmp(j.nickname, nickname) == 0){
+                    existe = true;
+                    cout << "ID: " << j.id << endl;
+                    cout << "APELLIDO: " << j.apellido << endl;
+                    cout << "NOMBRE: " << j.nombre << endl;
+                    cout << "NICKNAME: " << j.nickname << endl;
+                    cout << "PUNTAJE: " << j.puntaje << endl;
+                    cout << "PARTIDAS GANADAS: " << j.partidasGanadas << endl;
+                }
             }
         }
     }
     if (existe == false)
-        cout << "EL NICK PROPORCIONADO NO ESTA REGISTRADO \n DESCARTANDO DATOS INGRESADOS" << endl;
+        cout << "EL NICK PROPORCIONADO NO ESTA REGISTRADO" << endl;
     fclose(jugadores);
 }
 void modificarJugador(parchivo jugadores, tcadena nickname){
@@ -380,20 +400,22 @@ void modificarJugador(parchivo jugadores, tcadena nickname){
     tjugador j;
     bool existe = false;
     jugadores = fopen("datos/jugadores.bat", "rb+");
-    while (!feof(jugadores) && existe == false){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            if (strcmp(j.nickname, nickname) == 0){
-                existe = true;
-                cout << "Ingrese el nuevo nombre: ";
-                fflush(stdin);
-                gets(j.nombre);
-                cout << "Ingrese el nuevo apellido: ";
-                fflush(stdin);
-                gets(j.apellido);
-                fseek(jugadores,-sizeof(j), 1);
-                fwrite(&j, sizeof(j), 1, jugadores);
-                cout << "DATOS MODIFICADOS!" << endl;
+    if (jugadores != NULL){
+        while (!feof(jugadores) && existe == false){
+            fread(&j, sizeof(j), 1, jugadores);
+            if (!feof(jugadores)){
+                if (strcmp(j.nickname, nickname) == 0){
+                    existe = true;
+                    cout << "Ingrese el nuevo nombre: ";
+                    fflush(stdin);
+                    gets(j.nombre);
+                    cout << "Ingrese el nuevo apellido: ";
+                    fflush(stdin);
+                    gets(j.apellido);
+                    fseek(jugadores,-sizeof(j), 1);
+                    fwrite(&j, sizeof(j), 1, jugadores);
+                    cout << "DATOS MODIFICADOS!" << endl;
+                }
             }
         }
     }
@@ -408,15 +430,17 @@ void listarJugadores(parchivo jugadores){
     */
     tjugador j;
     jugadores = fopen("datos/jugadores.bat", "rb");
-    while (!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            cout << "ID: " << j.id << endl;
-            cout << "APELLIDO: " << j.apellido << endl;
-            cout << "NOMBRE: " << j.nombre << endl;
-            cout << "NICKNAME: " << j.nickname << endl;
-            cout << "PUNTAJE: " << j.puntaje << endl;
-            cout << "PARTIDAS GANADAS: " << j.partidasGanadas << endl;
+    if (jugadores != NULL){
+        while (!feof(jugadores)){
+            fread(&j, sizeof(j), 1, jugadores);
+            if (!feof(jugadores)){
+                cout << "ID: " << j.id << endl;
+                cout << "APELLIDO: " << j.apellido << endl;
+                cout << "NOMBRE: " << j.nombre << endl;
+                cout << "NICKNAME: " << j.nickname << endl;
+                cout << "PUNTAJE: " << j.puntaje << endl;
+                cout << "PARTIDAS GANADAS: " << j.partidasGanadas << endl;
+            }
         }
     }
     fclose(jugadores);
@@ -441,9 +465,13 @@ void eliminarJugador(parchivo jugadores, tcadena nickname){
         }
         fclose(aux);
         fclose(jugadores);
-        remove("datos/jugadores.bat");
-        rename("datos/temporal.bat","datos/jugadores.bat");
-        cout << j.nickname << " A SIDO ELIMINADO DE LA LISTA DE JUGADORES" << endl;
+        if (remove("datos/jugadores.bat") == 0){
+            rename("datos/temporal.bat","datos/jugadores.bat");
+            cout << j.nickname << " A SIDO ELIMINADO DE LA LISTA DE JUGADORES" << endl;
+        }
+        else{
+            cout << "PROBLEMAS, INTENTE MAS TARDE" << endl;
+        }
     }
 }
 bool verificarJugador(parchivo jugadores, tcadena nickname){
@@ -455,11 +483,13 @@ bool verificarJugador(parchivo jugadores, tcadena nickname){
     tjugador j;
     bool existe = false;
     jugadores = fopen("datos/jugadores.bat", "rb");
-    while (!feof(jugadores)){
-        fread(&j, sizeof(j), 1, jugadores);
-        if (!feof(jugadores)){
-            if (strcmp(j.nickname, nickname) == 0)
-                existe = true;
+    if (jugadores != NULL){
+        while (!feof(jugadores)){
+            fread(&j, sizeof(j), 1, jugadores);
+            if (!feof(jugadores)){
+                if (strcmp(j.nickname, nickname) == 0)
+                    existe = true;
+            }
         }
     }
     fclose(jugadores);
@@ -521,20 +551,22 @@ void consultarPalabra(parchivo palabras, tcadena palabra){
     tpalabra p;
     bool existe = false;
     palabras = fopen("datos/palabras.bat", "rb");
-    while (!feof(palabras)){
-        fread(&p, sizeof(p), 1, palabras);
-        if (!feof(palabras)){
-            if (strcmp(p.palabra, palabra) == 0){
-                existe = true;
-                cout << "ID: " << p.id << endl;
-                cout << "PALABRA: " << p.palabra << endl;
-                cout << "DEFINICION: " << p.definicion << endl;
-                cout << "LONGITUD: " << p.longitud << endl;
+    if (palabras != NULL){
+        while (!feof(palabras)){
+            fread(&p, sizeof(p), 1, palabras);
+            if (!feof(palabras)){
+                if (strcmp(p.palabra, palabra) == 0){
+                    existe = true;
+                    cout << "ID: " << p.id << endl;
+                    cout << "PALABRA: " << p.palabra << endl;
+                    cout << "DEFINICION: " << p.definicion << endl;
+                    cout << "LONGITUD: " << p.longitud << endl;
+                }
             }
         }
     }
     if (existe == false)
-        cout << "LA PALABRA PROPORCIONADA NO ESTA REGISTRADA \n DESCARTANDO DATOS INGRESADOS" << endl;
+        cout << "LA PALABRA PROPORCIONADA NO ESTA REGISTRADA" << endl;
     fclose(palabras);
 }
 void listarPalabras(parchivo palabras){
@@ -545,13 +577,15 @@ void listarPalabras(parchivo palabras){
     */
     tpalabra p;
     palabras = fopen("datos/palabras.bat", "rb");
-    while (!feof(palabras)){
-        fread(&p, sizeof(p), 1, palabras);
-        if (!feof(palabras)){
-            cout << "ID: " << p.id << endl;
-            cout << "PALABRA: " << p.palabra << endl;
-            cout << "DEFINICION: " << p.definicion << endl;
-            cout << "LONGITUD: " << p.longitud << endl;
+    if (palabras != NULL){
+        while (!feof(palabras)){
+            fread(&p, sizeof(p), 1, palabras);
+            if (!feof(palabras)){
+                cout << "ID: " << p.id << endl;
+                cout << "PALABRA: " << p.palabra << endl;
+                cout << "DEFINICION: " << p.definicion << endl;
+                cout << "LONGITUD: " << p.longitud << endl;
+            }
         }
     }
     fclose(palabras);
@@ -565,11 +599,13 @@ bool verificarPalabra(parchivo palabras, tcadena palabra){
     tpalabra p;
     bool existe = false;
     palabras = fopen("datos/palabras.bat", "rb");
-    while (!feof(palabras)){
-        fread(&p, sizeof(p), 1, palabras);
-        if (!feof(palabras)){
-            if (strcmp(p.palabra, palabra) == 0)
-                existe = true;
+    if (palabras != NULL){
+        while (!feof(palabras)){
+            fread(&p, sizeof(p), 1, palabras);
+            if (!feof(palabras)){
+                if (strcmp(p.palabra, palabra) == 0)
+                    existe = true;
+            }
         }
     }
     fclose(palabras);
@@ -651,6 +687,7 @@ void seleccionarNivel(detallesPartida &config, bool &palabrasSeleccionadas){
         seleccionarPalabras(listaPalabras, preListaPalabras);
         config.listaPalabras = listaPalabras;
         palabrasSeleccionadas = true;
+        cout << "La lista se genero con exitosamente" << endl;
     }
     else{
         cout << "No existen palabras suficientes para generar la lista, por favor seleccione otra dificultad o agregue mas palabras" << endl;
@@ -782,7 +819,7 @@ void iniciarPartida(detallesPartida config, parchivo jugadores){
                 guardarRegistro(jugadores, config.jugador2, true);
             }
             cout << "Puntaje jugador 1: " << config.jugador1.puntaje << endl;
-            cout << "Puntaje jugador 2:" << config.jugador2.puntaje << endl;
+            cout << "Puntaje jugador 2: " << config.jugador2.puntaje << endl;
         }
     }
 }
@@ -797,12 +834,14 @@ void preSeleccionarPalabras(tarreglo &preListaPalabras, int criterio){
     parchivo palabras;
     tpalabra p;
     palabras = fopen("datos/palabras.bat", "rb");
-    while (!feof(palabras)){
-        fread(&p, sizeof(p), 1, palabras);
-        if (!feof(palabras)){
-            if (p.longitud <= criterio){
-                preListaPalabras.ocupado += 1;
-                preListaPalabras.datos[preListaPalabras.ocupado] = p;
+    if (palabras != NULL){
+        while (!feof(palabras)){
+            fread(&p, sizeof(p), 1, palabras);
+            if (!feof(palabras)){
+                if (p.longitud <= criterio){
+                    preListaPalabras.ocupado += 1;
+                    preListaPalabras.datos[preListaPalabras.ocupado] = p;
+                }
             }
         }
     }
@@ -837,7 +876,7 @@ void seleccionarPalabras(pnodo &listaPalabras, tarreglo preListaPalabras){
         cantidad -= 1;
         }
     }
-    mostrarLista(listaPalabras);
+    //mostrarLista(listaPalabras);
 }
 void probarLetra(detallesPartida &config, pnodo &palabraActual, tarregloBool &palabraOcultada){
     /*
@@ -852,7 +891,6 @@ void probarLetra(detallesPartida &config, pnodo &palabraActual, tarregloBool &pa
     nos indicaria que la palabra fue adivinada y que debe pasarse a la siguiente.
     */
     char letraJugada;
-    cout << "La palabra es: " << palabraActual->dato.palabra << endl;
     cout << "Introduce una letra: ";
     cin >> letraJugada;
     if (verificarLetra(palabraActual, palabraOcultada, letraJugada) == true){
@@ -1100,15 +1138,25 @@ void guardarRegistro(parchivo jugadores, detallesJugador jugador, bool gano){
 }
 
 /* - - Ranking Jugadores - - */
-void mostrarArbol(pnodoArbol arbol){
+void mostrarArbol(pnodoArbol arbol, int orden){
     /*
     Muestra el ranking de jugadores utilizando la
     estructura de arbol.
     */
-    if (arbol != NULL){
-        if (arbol->dato.puntaje > 0)
-            cout << arbol->dato.id << "     " << arbol->dato.nickname << "          " << arbol->dato.partidasGanadas << "        " << arbol->dato.puntaje << endl;
-        mostrarArbol(arbol->izquierda);
-        mostrarArbol(arbol->derecha);
+    if (orden == 1){
+        if (arbol != NULL){
+            if (arbol->dato.partidasGanadas > 0)
+                cout << arbol->dato.id << "     " << arbol->dato.nickname << "          " << arbol->dato.partidasGanadas << "        " << arbol->dato.puntaje << endl;
+            mostrarArbol(arbol->izquierda, orden);
+            mostrarArbol(arbol->derecha, orden);
+        }
+    }
+    else{
+        if (arbol != NULL){
+            mostrarArbol(arbol->izquierda, orden);
+            mostrarArbol(arbol->derecha, orden);
+            if (arbol->dato.partidasGanadas > 0)
+                cout << arbol->dato.id << "     " << arbol->dato.nickname << "          " << arbol->dato.partidasGanadas << "        " << arbol->dato.puntaje << endl;
+        }
     }
 }
