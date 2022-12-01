@@ -95,8 +95,6 @@ bool verificarPalindroma(pnodo palabraActual);
 bool verificarCaracteresDistintos(pnodo palabraActual);
 void guardarRegistro(parchivo jugadores, detallesJugador jugadorGanador, bool gano);
 
-void mostrarArbol(pnodoArbol arbol, int orden);
-
 main(){
     int opcion;
     parchivo jugadores, palabras;
@@ -1135,28 +1133,4 @@ void guardarRegistro(parchivo jugadores, detallesJugador jugador, bool gano){
     }
     cout << "Se ha registrado tu partida " << jugador.nickname << endl;
     fclose(jugadores);
-}
-
-/* - - Ranking Jugadores - - */
-void mostrarArbol(pnodoArbol arbol, int orden){
-    /*
-    Muestra el ranking de jugadores utilizando la
-    estructura de arbol.
-    */
-    if (orden == 1){
-        if (arbol != NULL){
-            if (arbol->dato.partidasGanadas > 0)
-                cout << arbol->dato.id << "     " << arbol->dato.nickname << "          " << arbol->dato.partidasGanadas << "        " << arbol->dato.puntaje << endl;
-            mostrarArbol(arbol->izquierda, orden);
-            mostrarArbol(arbol->derecha, orden);
-        }
-    }
-    else{
-        if (arbol != NULL){
-            mostrarArbol(arbol->izquierda, orden);
-            mostrarArbol(arbol->derecha, orden);
-            if (arbol->dato.partidasGanadas > 0)
-                cout << arbol->dato.id << "     " << arbol->dato.nickname << "          " << arbol->dato.partidasGanadas << "        " << arbol->dato.puntaje << endl;
-        }
-    }
 }
